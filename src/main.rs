@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-use std::net::TcpListener;
+use std::{io::Write, net::TcpListener};
 
 fn main() {
     println!("Logs from your program will appear here!");
@@ -9,7 +9,8 @@ fn main() {
     
     for stream in listener.incoming() {
         match stream {
-            Ok(_stream) => {
+            Ok(mut stream) => {
+                stream.write_all(b"+PONG\r\n").unwrap();
                 println!("accepted new connection");
             }
             Err(e) => {
