@@ -6,15 +6,12 @@ use tokio_util::{self, codec::Decoder};
 pub type Value = Bytes;
 pub type Key = Bytes;
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct BufSplit {
-    start: usize,
-    end: usize,
-}
+#[derive(Debug, Clone, PartialEq)]
+pub struct BufSplit(usize, usize);
 
 impl BufSplit {
     pub fn as_slice<'a>(&self, buf: &'a BytesMut) -> &'a [u8] {
-        &buf[self.start..self.end]
+        &buf[self.0..self.1]
     }
 }
 
