@@ -1,4 +1,4 @@
-use anyhow::Ok;
+use memchr;
 use bytes::{Bytes, BytesMut};
 use tokio;
 use tokio_util::{self, codec::Decoder};
@@ -46,11 +46,9 @@ impl RespParser {
             return None;
         }
         //start looking for for "\r" after word - end of word
-        buf[pos..] 
-            .iter()
-            .find(|slice| slice == &&b'\r')
+        memchr::memchr(b'\r', &buf[pos..])
             .and_then(|end| {
-                let end = *end as usize;
+                let end = end as usize;
                 if end + 1 < buf.len() {
                     // pos + end == end of word
                     // pos + end + 2 == \r\n<HERE>
