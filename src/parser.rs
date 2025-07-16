@@ -5,7 +5,18 @@ use tokio_util::{self, codec::Decoder};
 
 pub type Value = Bytes;
 pub type Key = Bytes;
-pub type BufSplit = (usize, usize);
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct BufSplit {
+    start: usize,
+    end: usize,
+}
+
+impl BufSplit {
+    pub fn as_slice<'a>(&self, buf: &'a BytesMut) -> &'a [u8] {
+        &buf[self.start..self.end]
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Resp {
