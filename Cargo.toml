@@ -5,7 +5,6 @@ authors = ["Codecrafters <hello@codecrafters.io>"]
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.59"                                   # error handling
 bytes = { version = "1.3.0", features = ["serde"] }                                     # helps manage buffers
 memchr = "2.7.5"
 thiserror = "1.0.32"                                # error handling

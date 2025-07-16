@@ -1,11 +1,15 @@
 #![allow(unused_imports)]
-use std::{io::{BufReader, Error, Read, Write}, net::TcpListener, thread};
- 
+use std::{
+    io::{BufReader, Error, Read, Write},
+    net::TcpListener,
+    thread,
+};
+
 fn main() -> Result<(), Error> {
     let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
-    let mut buf = [0u8;512];
+    let mut buf = [0u8; 512];
     for stream in listener.incoming() {
-        thread::spawn( move || -> Result<(), Error> {
+        thread::spawn(move || -> Result<(), Error> {
             match stream {
                 Ok(stream) => {
                     let mut buf_reader = BufReader::new(stream);
@@ -15,7 +19,7 @@ fn main() -> Result<(), Error> {
                             streamchik.write_all(b"+PONG\r\n")?;
                             streamchik.flush()?;
                         } else {
-                            break Ok(())
+                            break Ok(());
                         }
                     }
                 }
@@ -24,7 +28,7 @@ fn main() -> Result<(), Error> {
                     Ok(())
                 }
             }
-    });
+        });
     }
     Ok(())
 }
