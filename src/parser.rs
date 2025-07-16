@@ -1,3 +1,5 @@
+use core::str;
+
 use memchr;
 use bytes::{Bytes, BytesMut};
 use tokio;
@@ -91,9 +93,16 @@ impl RespParser {
         RedisResult::Ok(RespParser::word(buf, pos).map(|(pos, word)| (pos, Resp::Error(word))))
     }
 
+    pub fn int(buf: &BytesMut, pos: usize) -> Result<Option<(usize, i64)>, RESPError> {
+        RespParser::word(buf, pos).map(|(pos, bufsplit)| {
+            let s = str::from_utf8(bufsplit.as_slice(buf)).map_err(|_| RESPError::IntParseFailure)?;
+            let i: i64 = s.parse().map_err(|_| RESPError::IntParseFailure)?;
+            Ok(Some((pos, i)))}).unwrap()
+        
+    }
 
     pub fn bulk_string(buf: &BytesMut, pos: usize) -> RedisResult {
-        todo!()
+        match int
     }
 
 }
