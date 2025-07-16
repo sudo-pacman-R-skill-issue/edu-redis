@@ -1,10 +1,7 @@
 #![allow(unused_imports)]
 use std::{io::{BufReader, Error, Read, Write}, net::TcpListener, thread};
-
+ 
 fn main() -> Result<(), Error> {
-    println!("Logs from your program will appear here!");
-
-    
     let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
     let mut buf = [0u8;512];
     for stream in listener.incoming() {
