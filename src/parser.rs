@@ -1,27 +1,22 @@
 use core::str;
-
 use bytes::{Bytes, BytesMut};
 use memchr;
-use tokio;
 use tokio_util::{self, codec::Decoder};
 
-pub type Value = Bytes;
-pub type Key = Bytes;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct BufSplit(usize, usize);
+#[derive(Clone, PartialEq)]
+struct BufSplit(usize, usize);
 
 impl BufSplit {
     pub fn as_slice<'a>(&self, buf: &'a BytesMut) -> &'a [u8] {
         &buf[self.0..self.1]
     }
 
-    pub fn as_bytes(&self, buf: Bytes) -> Bytes {
+    pub fn as_bytes(&self, buf: &Bytes) -> Bytes {
         buf.slice(self.0..self.1)
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Resp {
     String(BufSplit),
     Error(BufSplit),
@@ -31,8 +26,32 @@ pub enum Resp {
     NullBulkString,
 }
 
-#[derive(Debug)]
-pub enum RESPError {
+impl Resp {
+    fn redis_value(self, buf: &Bytes) -> RespOrig {
+        match self {
+            // bfs is BufSplit(start, end), which has the as_bytes method defined above
+            Resp::String(bfs) => RespOrig::String(bfs.as_bytes(buf)),
+            Resp::Error(bfs) => RespOrig::Error(bfs.as_bytes(buf)),
+            Resp::Array(arr) => {
+                RespOrig::Array(arr.into_iter().map(|bfs| bfs.redis_value(buf)).collect())
+            }
+            Resp::NullArray => RespOrig::NullArray,
+            Resp::NullBulkString => RespOrig::NullBulkString,
+            Resp::Int(i) => RespOrig::Int(i),
+        }
+    }
+}
+/// original look of resp type for values flowing thorugh the system. inputs and ouputs converts into 'Resp'
+enum RespOrig {
+    String(Bytes),
+    Error(Bytes),
+    Int(i64),
+    Array(Vec<RespOrig>),
+    NullArray,
+    NullBulkString,
+}
+
+enum RESPError {
     UnexpectedEnd,
     UnknownStartingByte,
     IOError(std::io::Error),
@@ -41,26 +60,25 @@ pub enum RESPError {
     BadArraySize(i64),
 }
 
-impl Resp {
-    // pub type ReprResult = Result<Option<Self::Item>, Self::Error>;
-    fn serialize(self) -> Self {
-        self
+impl From<std::io::Error> for RESPError {
+    fn from(err: std::io::Error) -> Self {
+        RESPError::IOError(err)
     }
 }
 
-#[derive(Debug)]
-pub struct RespParser;
+
+#[derive(Default)]
+struct RespParser;
 type RedisResult = Result<Option<(usize, Resp)>, RESPError>;
 
 impl RespParser {
-    pub fn word(buf: &BytesMut, pos: usize) -> Option<(usize, BufSplit)> {
+    fn word(buf: &BytesMut, pos: usize) -> Option<(usize, BufSplit)> {
         // nowhere to continue. end of packet
         if buf.len() <= pos {
             return None;
         }
         //start looking for for "\r" after word - end of word
         memchr::memchr(b'\r', &buf[pos..]).and_then(|end| {
-            let end = end as usize;
             if end + 1 < buf.len() {
                 // pos + end == end of word
                 // pos + end + 2 == \r\n<HERE>
@@ -84,6 +102,25 @@ impl RespParser {
             b':' => resp_int(buf, pos + 1),
             b'*' => array(buf, pos + 1),
             _ => Err(RESPError::UnknownStartingByte),
+        }
+    }
+}
+
+impl Decoder for RespParser {
+    type Item = RespOrig;
+    type Error = RESPError;
+    
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        if !src.is_empty() {
+            return Ok(None);
+        }
+
+        match RespParser::parse(src, 0)? {
+            Some((pos, value)) => {
+                let data = src.split_to(pos);
+                Ok(Some(value.redis_value(&data.freeze())))
+            },
+            None => Ok(None),
         }
     }
 }
@@ -157,12 +194,3 @@ pub fn int(buf: &BytesMut, pos: usize) -> Result<Option<(usize, i64)>, RESPError
         })
         .unwrap()
 }
-
-// impl Decoder for RespParser {
-// type Item = RedisValue;
-// type Error = RespError;
-
-//     fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-//         todo!()
-//     }
-// }
