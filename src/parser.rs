@@ -1,5 +1,5 @@
-use core::str;
 use bytes::{Bytes, BytesMut};
+use core::str;
 use memchr;
 use tokio_util::{self, codec::Decoder};
 
@@ -42,7 +42,7 @@ impl Resp {
     }
 }
 /// original look of resp type for values flowing thorugh the system. inputs and ouputs converts into 'Resp'
-enum RespOrig {
+pub enum RespOrig {
     String(Bytes),
     Error(Bytes),
     Int(i64),
@@ -51,7 +51,8 @@ enum RespOrig {
     NullBulkString,
 }
 
-enum RESPError {
+#[derive(Debug)]
+pub enum RESPError {
     UnexpectedEnd,
     UnknownStartingByte,
     IOError(std::io::Error),
@@ -66,9 +67,8 @@ impl From<std::io::Error> for RESPError {
     }
 }
 
-
 #[derive(Default)]
-struct RespParser;
+pub struct RespParser;
 type RedisResult = Result<Option<(usize, Resp)>, RESPError>;
 
 impl RespParser {
@@ -109,7 +109,7 @@ impl RespParser {
 impl Decoder for RespParser {
     type Item = RespOrig;
     type Error = RESPError;
-    
+
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if !src.is_empty() {
             return Ok(None);
@@ -119,7 +119,7 @@ impl Decoder for RespParser {
             Some((pos, value)) => {
                 let data = src.split_to(pos);
                 Ok(Some(value.redis_value(&data.freeze())))
-            },
+            }
             None => Ok(None),
         }
     }
@@ -155,7 +155,7 @@ fn bulk_string(buf: &BytesMut, pos: usize) -> RedisResult {
                 let bb = Resp::String(BufSplit(pos, total_size));
                 Ok(Some((pos, bb)))
             }
-        },
+        }
         Some((_pos, bad_size)) => Err(RESPError::BadBulkStringSize(bad_size)),
         None => Err(RESPError::UnknownStartingByte),
     }
@@ -164,7 +164,7 @@ fn bulk_string(buf: &BytesMut, pos: usize) -> RedisResult {
 /// https://redis.io/docs/latest/develop/reference/protocol-spec/#arrays
 fn array(buf: &BytesMut, pos: usize) -> RedisResult {
     match int(buf, pos)? {
-        Some((pos, -1)) =>Ok(Some((pos, Resp::NullArray))),
+        Some((pos, -1)) => Ok(Some((pos, Resp::NullArray))),
         Some((pos, num_elements)) if num_elements >= 0 => {
             let mut values = Vec::with_capacity(num_elements as usize);
             let mut curr_pos = pos;
@@ -173,12 +173,12 @@ fn array(buf: &BytesMut, pos: usize) -> RedisResult {
                     Some((pos, word)) => {
                         curr_pos += pos;
                         values.push(word);
-                    },
+                    }
                     None => return Ok(None),
                 }
             }
             Ok(Some((curr_pos, Resp::Array(values))))
-        },
+        }
         Some((_pos, bad)) => Err(RESPError::BadArraySize(bad)),
         None => Ok(None),
     }

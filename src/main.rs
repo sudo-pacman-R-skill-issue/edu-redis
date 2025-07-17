@@ -1,34 +1,35 @@
 #![allow(unused_imports)]
+use bytes::BytesMut;
+use codecrafters_redis::parser::RespParser;
 use std::{
-    io::{BufReader, Error, Read, Write},
-    net::TcpListener,
+    io::{Error, Read, Write},
     thread,
 };
+use tokio::io::BufReader;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+};
+use tokio_util::codec::Decoder;
 
-fn main() -> Result<(), Error> {
-    let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
-    let mut buf = [0u8; 512];
-    for stream in listener.incoming() {
-        thread::spawn(move || -> Result<(), Error> {
-            match stream {
-                Ok(stream) => {
-                    let mut buf_reader = BufReader::new(stream);
-                    loop {
-                        if buf_reader.read(&mut buf).unwrap() > 0 {
-                            let streamchik = buf_reader.get_mut();
-                            streamchik.write_all(b"+PONG\r\n")?;
-                            streamchik.flush()?;
-                        } else {
-                            break Ok(());
-                        }
-                    }
-                }
-                Err(e) => {
-                    println!("error: {}", e);
-                    Ok(())
-                }
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let (mut stream, _) = listener.accept().await?;
+    tokio::spawn(async move {
+        loop {
+            let mut buf = BytesMut::with_capacity(512);
+            if &stream.read_buf(&mut buf).await.unwrap() >= &(0 as usize) {
+                let mut resp: RespParser = Default::default();
+                let resp_value = resp.decode(&mut buf).unwrap();
+
+                stream.write_all(todo!()).await?
+            } else {
+                break;
             }
-        });
-    }
+        }
+        Ok::<(), Error>(())
+    })
+    .await??;
     Ok(())
 }
