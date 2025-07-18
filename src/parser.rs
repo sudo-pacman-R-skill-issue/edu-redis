@@ -91,7 +91,7 @@ impl RespParser {
     }
 
     fn parse(buf: &BytesMut, pos: usize) -> RedisResult {
-        if !buf.is_empty() {
+        if buf.is_empty() {
             return Ok(None);
         }
 

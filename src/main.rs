@@ -19,7 +19,7 @@ async fn main() -> Result<(), Error> {
     tokio::spawn(async move {
         loop {
             let mut buf = BytesMut::with_capacity(512);
-            if &stream.read_buf(&mut buf).await.unwrap() >= &(0 as usize) {
+            if stream.read_buf(&mut buf).await.unwrap() > 0 {
                 let mut resp: RespParser = Default::default();
                 let resp_value = resp.decode(&mut buf).unwrap();
 

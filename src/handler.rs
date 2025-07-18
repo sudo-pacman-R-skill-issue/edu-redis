@@ -16,9 +16,9 @@ fn combine_bytes_vector(vec_bytes: Vec<Bytes>) -> Bytes {
 }
 
 impl RespOrig {
-    /// TODO лишняя функция, лучше сразу обрабатывать входящие команды(назвать функцию handle_command)
-    /// TODO а то получается лишняя обёртка
-    pub fn extract_value(self) -> Option<Bytes> {
+    /// TODO лишняя функция, лучше сразу обрабатывать входящие команды
+    /// TODO лишняя обёртка
+    pub fn extract_value/*handle_command*/(self) -> Option<Bytes> {
         match self {
             RespOrig::String(bytes) => Some(bytes),
             RespOrig::Error(bytes) => Some(bytes),
@@ -40,7 +40,7 @@ impl RespOrig {
     }
 
     ///TODO: функция энкодер в resp протокол
-    pub fn to_resp(value: Bytes) {
+    pub fn to_resp(value: Bytes) -> Resp {
         todo!()
     }
 }
