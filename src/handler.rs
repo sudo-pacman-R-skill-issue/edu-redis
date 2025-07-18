@@ -1,6 +1,3 @@
-use core::panic;
-use std::io::Error;
-
 use crate::parser::*;
 use bytes::{BufMut, Bytes, BytesMut};
 
@@ -14,7 +11,7 @@ fn append_crlf(bytes: &Bytes) -> Bytes {
 fn combine_bytes_vector(vec_bytes: Vec<Bytes>) -> Bytes {
     let total_size = vec_bytes.iter().map(|x| x.len()).sum();
     let mut buffer = BytesMut::with_capacity(total_size);
-    vec_bytes.into_iter().map(|b| buffer.extend_from_slice(&b));
+    vec_bytes.into_iter().for_each(|b| buffer.extend_from_slice(&b));
     buffer.freeze()
 }
 
@@ -27,12 +24,14 @@ pub fn extract_value(resp: RespOrig) -> Option<Bytes> {
             let mut result = Vec::with_capacity(resp_origs.len());
             resp_origs
                 .into_iter()
-                .for_each(|element| match extract_value(element) {
-                    Some(value) => {
-                        result.push(append_crlf(&value));
+                .for_each(|element| 
+                    match extract_value(element) {
+                        Some(value) => {
+                            result.push(append_crlf(&value));
+                        }
+                        None => todo!(),
                     }
-                    None => todo!(),
-                });
+                );
             let res = combine_bytes_vector(result);
             Some(res)
         }
