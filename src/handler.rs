@@ -6,9 +6,7 @@ pub trait ToResp {
 }
 
 impl RespOrig {
-    /// TODO лишняя функция, лучше сразу обрабатывать входящие команды
-    /// TODO лишняя обёртка
-    pub fn extract_value/*handle_command*/(self) -> Option<Bytes> {
+    pub fn handle_command(self) -> Option<Bytes> {
         match self {
             RespOrig::String(bytes) => Some(bytes),
             RespOrig::BulkString(bytes) => {
@@ -57,9 +55,65 @@ impl RespOrig {
             RespOrig::NullBulkString => None,
         }
     }
+}
+impl ToResp for RespOrig {
+    fn to_resp(self) -> Bytes {
+        match self {
+            RespOrig::String(bytes) => {
+                let mut buffer = BytesMut::with_capacity(bytes.len() + 3);
+                buffer.put_u8(b'+');
+                buffer.extend_from_slice(&bytes);
+                buffer.put_slice(b"\r\n");
+                buffer.freeze()
+            },
+            RespOrig::BulkString(bytes) => {
+                let prefix = format!("${}\r\n", bytes.len());
+                let mut buffer = BytesMut::with_capacity(prefix.len() + bytes.len() + 2);
+                buffer.extend_from_slice(prefix.as_bytes());
+                buffer.extend_from_slice(&bytes);
+                buffer.put_slice(b"\r\n");
+                buffer.freeze()
+            },
+            RespOrig::Error(bytes) => {
+                let mut buffer = BytesMut::with_capacity(bytes.len() + 3);
+                buffer.put_u8(b'-');
+                buffer.extend_from_slice(&bytes);
+                buffer.put_slice(b"\r\n");
+                buffer.freeze()
+            },
+            RespOrig::Int(val) => {
+                let num_str = val.to_string();
+                let mut buffer = BytesMut::with_capacity(num_str.len() + 3);
+                buffer.put_u8(b':');
+                buffer.extend_from_slice(num_str.as_bytes());
+                buffer.put_slice(b"\r\n");
+                buffer.freeze()
+            },
+            RespOrig::Array(items) => {
+                items.to_resp()
+            },
+            RespOrig::NullArray => {
+                Bytes::from("*-1\r\n")
+            },
+            RespOrig::NullBulkString => {
+                Bytes::from("$-1\r\n")
+            }
+        }
+    }
+}
 
-    ///TODO: функция энкодер в resp протокол
-    pub fn to_resp(value: Bytes) -> Resp {
-        todo!()
+// Реализуем для Vec<RespOrig>
+impl ToResp for Vec<RespOrig> {
+    fn to_resp(self) -> Bytes {
+        let array_header = format!("*{}\r\n", self.len());
+        let mut buffer = BytesMut::with_capacity(array_header.len() + 100);
+        buffer.extend_from_slice(array_header.as_bytes());
+        
+        for item in self {
+            let item_bytes = item.to_resp();
+            buffer.extend_from_slice(&item_bytes);
+        }
+        
+        buffer.freeze()
     }
 }
