@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 use bytes::BytesMut;
-use codecrafters_redis::parser::RespParser;
+use codecrafters_redis::parser::{RespParser, RespOrig};
+use codecrafters_redis::handler::ToResp;
 use std::{
     io::{Error, Read, Write},
     thread,
@@ -21,9 +22,9 @@ async fn main() -> Result<(), Error> {
             let mut buf = BytesMut::with_capacity(512);
             if stream.read_buf(&mut buf).await.unwrap() > 0 {
                 let mut resp: RespParser = Default::default();
-                let resp_value = resp.decode(&mut buf).unwrap();
+                let resp_value = resp.decode(&mut buf).unwrap().unwrap().handle_command();
 
-                stream.write_all(todo!()).await?
+                stream.write_all(&resp_value.unwrap()).await?
             } else {
                 break;
             }
