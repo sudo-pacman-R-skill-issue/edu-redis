@@ -1,18 +1,8 @@
 use crate::parser::*;
 use bytes::{BufMut, Bytes, BytesMut};
 
-fn append_crlf(bytes: &Bytes) -> Bytes {
-    let mut buffer = BytesMut::with_capacity(bytes.len() + 2);
-    buffer.extend_from_slice(&bytes[..]);
-    buffer.put_slice(b"\r\n");
-    buffer.freeze()
-}
-
-fn combine_bytes_vector(vec_bytes: Vec<Bytes>) -> Bytes {
-    let total_size = vec_bytes.iter().map(|x| x.len()).sum();
-    let mut buffer = BytesMut::with_capacity(total_size);
-    vec_bytes.into_iter().for_each(|b| buffer.extend_from_slice(&b));
-    buffer.freeze()
+pub trait ToResp {
+    fn to_resp(self) -> Bytes;
 }
 
 impl RespOrig {
