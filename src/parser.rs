@@ -19,6 +19,7 @@ impl BufSplit {
 #[derive(Clone, PartialEq)]
 pub enum Resp {
     String(BufSplit),
+    BufString(BufSplit),
     Error(BufSplit),
     Array(Vec<Resp>),
     Int(i64),
@@ -31,6 +32,7 @@ impl Resp {
         match self {
             // bfs is BufSplit(start, end), which has the as_bytes method defined above
             Resp::String(bfs) => RespOrig::String(bfs.as_bytes(buf)),
+            Resp::BufString(bfs) => RespOrig::BulkString(bfs.as_bytes(buf)),
             Resp::Error(bfs) => RespOrig::Error(bfs.as_bytes(buf)),
             Resp::Array(arr) => {
                 RespOrig::Array(arr.into_iter().map(|bfs| bfs.redis_value(buf)).collect())
@@ -44,6 +46,7 @@ impl Resp {
 /// original look of resp type for values flowing thorugh the system. inputs and ouputs converts into 'Resp'
 pub enum RespOrig {
     String(Bytes),
+    BulkString(Bytes),
     Error(Bytes),
     Int(i64),
     Array(Vec<RespOrig>),
