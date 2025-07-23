@@ -12,9 +12,12 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 use tokio_util::codec::Decoder;
+use tracing::{span, Level};
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    tracing_forest::init();
     let listener = TcpListener::bind("127.0.0.1:6379").await?;
     let (mut stream, _) = listener.accept().await?;
     tokio::spawn(async move {

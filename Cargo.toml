@@ -10,3 +10,5 @@ memchr = "2.7.5"
 thiserror = "1.0.32"                                # error handling
 tokio = { version = "1.23.0", features = ["full"] } # async networking
 tokio-util = { version = "0.7.15", features = ["codec","net","io","time"] }
+tracing = "0.1.41"
+tracing-forest = { version = "0.1.6", features = ["full"] }
