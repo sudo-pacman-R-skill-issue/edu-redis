@@ -145,22 +145,29 @@ fn resp_int(buf: &BytesMut, pos: usize) -> RedisResult {
 
 /// https://redis.io/docs/latest/develop/reference/protocol-spec/#bulk-strings
 fn bulk_string(buf: &BytesMut, pos: usize) -> RedisResult {
+    // recall that the `pos` returned by `int` is the first index of the string content.
     match int(buf, pos)? {
+        // special case: redis defines a NullBulkString type, with length of -1.
         // https://redis.io/docs/latest/develop/reference/protocol-spec/#null-bulk-strings
         Some((pos, -1)) => Ok(Some((pos, Resp::NullBulkString))),
-
+        // We have a size >= 0
         Some((pos, size)) if size >= 0 => {
+            // We trust the client here, and directly calculate the end index of string (absolute w.r.t pos)
             let total_size = pos + size as usize;
-            //not enough bytes has send
+            // The client hasn't sent us enough bytes
             if buf.len() < total_size + 2 {
                 Ok(None)
             } else {
+                // We have enough bytes, so we can generate the correct type.
                 let bb = Resp::String(BufSplit(pos, total_size));
-                Ok(Some((pos, bb)))
+                // total_size + 2 == ...bulkstring\r\n<HERE> -- after CLRF
+                Ok(Some((total_size + 2, bb)))
             }
         }
+        // We recieved a garbage size (size < -1), so error out
         Some((_pos, bad_size)) => Err(RESPError::BadBulkStringSize(bad_size)),
-        None => Err(RESPError::UnknownStartingByte),
+        // Not enough bytes to parse an int (i.e. no CLRF to delimit the int)
+        None => Ok(None),
     }
 }
 
