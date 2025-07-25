@@ -1,18 +1,36 @@
 use crate::parser::*;
 use bytes::{BufMut, Bytes, BytesMut};
+use tracing::*;
 
 pub trait ToResp {
     fn to_resp(self) -> Bytes;
 }
 
 impl RespOrig {
+    #[tracing::instrument(level = "debug")]
     pub fn handle_command(self) -> Option<Bytes> {
+        debug!("handling resp command");
         match self {
-            RespOrig::String(bytes) => Some(bytes),
+            RespOrig::String(bytes) => {
+                debug!(data = ?bytes, "Handling string command");
+                Some(bytes)},
             RespOrig::BulkString(bytes) => {
-                Some(bytes)
+                debug!(data = ?bytes, "Handling bulk string command");
+                if bytes.is_empty() {
+                    return Some(Bytes::from("$0\r\n\r\n"))
+                }
+                
+                let mut buffer = Vec::with_capacity(bytes.len() + 5);
+                buffer.extend_from_slice("$".as_bytes());
+                buffer.put_slice(format!("{}\r\n", bytes.len()).as_bytes());
+                buffer.extend_from_slice(&bytes);
+                buffer.put_slice("\r\n".as_bytes());
+                Some(Bytes::from(buffer))
             }
-            RespOrig::Error(bytes) => Some(bytes),
+            RespOrig::Error(bytes) => {
+                error!("Error command encountered: {:?}", bytes);
+                Some(bytes)
+            },
             RespOrig::Int(int) => Some(Bytes::copy_from_slice(format!("{int}").as_bytes())),
             RespOrig::Array(items) => {
                 if items.is_empty() {
