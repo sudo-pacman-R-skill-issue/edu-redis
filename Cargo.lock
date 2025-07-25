@@ -129,6 +129,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-forest",
+ "tracing-subscriber",
 ]
 
 [[package]]
