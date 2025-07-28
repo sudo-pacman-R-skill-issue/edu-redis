@@ -2,6 +2,7 @@
 use bytes::BytesMut;
 use codecrafters_redis::parser::{RespParser, RespOrig};
 use codecrafters_redis::handler::ToResp;
+use tracing_forest::init;
 use std::{
     io::{Error, Read, Write},
     thread,
@@ -15,23 +16,10 @@ use tokio_util::codec::Decoder;
 use tracing::{debug, error, info, span, trace, warn, Level, Instrument};
 use tracing_subscriber::{EnvFilter, prelude::*};
 
-fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            EnvFilter::new("debug")
-                .add_directive("tokio=info".parse().unwrap())
-                .add_directive("runtime=info".parse().unwrap())
-        });
-
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_forest::ForestLayer::default())
-        .init();
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    init_tracing();
+    init();
     
     info!("Starting Redis server...");
     
@@ -110,18 +98,17 @@ async fn handle_client(mut stream: TcpStream) -> Result<(), Error> {
                             debug!(command = ?resp_value, "Successfully parsed command");
                             
                             let handle_span = span!(Level::DEBUG, "handle_command");
-                            let response = resp_value
+                            let res = resp_value
                                 .handle_command()
-                                .instrument(handle_span)
-                                .inner().clone();
+                                .instrument(handle_span);
+                            let response = res.inner();
                             
                             match response {
                                 Some(bytes) => {
                                     debug!(response_size = bytes.len(), "Command produced response");
                                     trace!(response = ?bytes, "Response data");
-                                    
                                     let write_span = span!(Level::DEBUG, "write_response");
-                                    match stream.write_all(&bytes).instrument(write_span).await {
+                                    match stream.write_all(bytes).instrument(write_span).await {
                                         Ok(_) => {
                                             debug!("Response sent successfully");
                                             Ok(())

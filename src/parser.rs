@@ -2,10 +2,10 @@ use bytes::{Bytes, BytesMut};
 use core::str;
 use memchr;
 use tokio_util::{self, codec::Decoder};
-use tracing::{debug, error, info, span, trace, warn, Level};
+use tracing::{debug, error, info, trace, warn};
 
 #[derive(Debug, Clone, PartialEq)]
-struct BufSplit(usize, usize);
+pub struct BufSplit(usize, usize);
 
 impl BufSplit {
     pub fn as_slice<'a>(&self, buf: &'a BytesMut) -> &'a [u8] {
@@ -118,6 +118,9 @@ impl RespParser {
         //start looking for for "\r" after word - end of word
         trace!("Searching for \\r in buffer");
         memchr::memchr(b'\r', &buf[pos..]).and_then(|end| {
+            if buf.len() <= pos {
+                return None;
+            }
             if end + 1 < buf.len() {
                 // pos + end == end of word
                 // pos + end + 2 == \r\n<HERE>
@@ -140,10 +143,10 @@ impl RespParser {
             return Ok(None);
         }
 
-        let byte = buf[pos];
-        debug!(byte = %char::from(byte), pos, "Parsing byte");
+        println!("buffer: \n\n{buf:?}\n\n");
+
         
-        match byte {
+        match buf[pos] {
             b'+' => {
                 debug!("Detected simple string");
                 simple_string(buf, pos + 1)
@@ -165,7 +168,6 @@ impl RespParser {
                 array(buf, pos + 1)
             },
             _ => {
-                error!(byte, "Unknown starting byte");
                 Err(RESPError::UnknownStartingByte)
             },
         }

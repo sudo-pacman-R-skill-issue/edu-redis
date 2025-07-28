@@ -21,12 +21,13 @@ impl RespOrig {
                 }
                 
                 let mut buffer = Vec::with_capacity(bytes.len() + 5);
-                buffer.extend_from_slice("$".as_bytes());
+                buffer.put_u8(b'$');
                 buffer.put_slice(format!("{}\r\n", bytes.len()).as_bytes());
                 buffer.extend_from_slice(&bytes);
-                buffer.put_slice("\r\n".as_bytes());
+                buffer.put_slice(b"\r\n");
                 Some(Bytes::from(buffer))
             }
+
             RespOrig::Error(bytes) => {
                 error!("Error command encountered: {:?}", bytes);
                 Some(bytes)
