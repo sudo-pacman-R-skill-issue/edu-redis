@@ -290,7 +290,7 @@ fn array(buf: &BytesMut, pos: usize) -> RedisResult {
                 trace!(index = i, position = curr_pos, "Parsing array element");
                 match RespParser::parse(buf, curr_pos)? {
                     Some((pos, word)) => {
-                        curr_pos += pos;
+                        curr_pos = pos;
                         trace!(new_position = curr_pos, "Element parsed");
                         values.push(word);
                     }
